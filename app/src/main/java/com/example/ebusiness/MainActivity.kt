@@ -147,6 +147,9 @@ fun StagePotApp() {
                     onNavigateToAlerts = { currentScreen = Screen.Alerts },
                     onCurrencySettings = { currentScreen = Screen.CurrencySettings },
                     onEditProfile = { currentScreen = Screen.EditProfile },
+                    onNavigateToHome = { currentScreen = Screen.Home },
+                    onNavigateToTickets = { currentScreen = Screen.Tickets },
+                    onNavigateToImprint = { currentScreen = Screen.Imprint },
                     userType = userType
                 )
                 is Screen.PaymentMethods -> PaymentMethodsScreen(

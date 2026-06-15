@@ -34,12 +34,16 @@ fun ProfileScreen(
     onNavigateToAlerts: () -> Unit = {},
     onCurrencySettings: () -> Unit = {},
     onEditProfile: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToTickets: () -> Unit = {},
+    onNavigateToImprint: () -> Unit = {},
     userType: String = "fan"   // "fan" oder "host"
 ) {
     val isHost = userType == "host"
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     fun snack(msg: String) { scope.launch { snackbarHostState.showSnackbar(msg) } }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -106,12 +110,46 @@ fun ProfileScreen(
                             modifier = Modifier.size(22.dp))
                     }
                     Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = { snack("Menu – coming soon") },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Menu, null,
-                            tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp))
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Menu, null,
+                                tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp))
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Events") },
+                                leadingIcon = { Icon(Icons.Default.Home, null) },
+                                onClick = { menuExpanded = false; onNavigateToHome() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("My Tickets") },
+                                leadingIcon = { Icon(Icons.Default.ConfirmationNumber, null) },
+                                onClick = { menuExpanded = false; onNavigateToTickets() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Secondary Market") },
+                                leadingIcon = { Icon(Icons.Default.Storefront, null) },
+                                onClick = { menuExpanded = false; snack("Secondary Market – coming soon") }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Imprint") },
+                                leadingIcon = { Icon(Icons.Default.Info, null) },
+                                onClick = { menuExpanded = false; onNavigateToImprint() }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(if (isDarkMode) "Light Mode" else "Dark Mode") },
+                                leadingIcon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, null) },
+                                onClick = { menuExpanded = false; onToggleDarkMode() }
+                            )
+                        }
                     }
                 }
             }
