@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.ebusiness.screens.HomeScreen
+import com.example.ebusiness.screens.Tickets
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,20 +70,4 @@ fun TicketAndEventsApp() {
             }
         }
     }
-}
-
-@Composable
-fun HomeScreen() {
-    Text(
-        text = "Hier kommen Events hin",
-        style = MaterialTheme.typography.headlineMedium
-    )
-}
-
-@Composable
-fun Tickets() {
-    Text(
-        text = "Hier kommen die eigenen Tickets hin",
-        style = MaterialTheme.typography.headlineMedium
-    )
 }
