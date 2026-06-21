@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ebusiness.data.Event
 import com.example.ebusiness.data.Ticket
+import com.example.ebusiness.data.sha256
 import com.example.ebusiness.entities.*
 import com.example.ebusiness.repository.AppDatabase
 import com.example.ebusiness.repository.DatabaseSeeder
@@ -68,6 +69,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Fehlermeldungen — falls mal was schiefläuft
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
+
+    // Login-Fehlermeldung — wird im LoginScreen angezeigt
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError = _loginError.asStateFlow()
 
     // Beim Start der App: DB befüllen (falls leer) und alles laden
     init {
@@ -175,12 +180,50 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Wechselt den eingeloggten User: "fan" → User 1, "host" → User 2.
-     * Danach wird alles neu geladen damit die Tickets und Daten stimmen.
+     * Nur für den Quick Test Login — umgeht die echte Passwort-Prüfung.
      */
     fun loginAs(userType: String) {
         val userId = if (userType == "host") 2 else 1
         _currentUserId.value = userId
+        _loginError.value = null
         loadAll()
+    }
+
+    /**
+     * Echter Login: E-Mail-Hash in DB suchen, Passwort-Hash vergleichen.
+     * Bei Erfolg wird onSuccess mit dem userType aufgerufen, bei Fehler
+     * erscheint eine Fehlermeldung im LoginScreen.
+     */
+    fun login(email: String, password: String, onSuccess: (userType: String) -> Unit) {
+        viewModelScope.launch {
+            _loginError.value = null
+
+            // Eingaben prüfen bevor wir überhaupt die DB anfragen
+            if (email.isBlank() || password.isBlank()) {
+                _loginError.value = "Please enter email and password."
+                return@launch
+            }
+
+            // E-Mail hashen und in DB suchen
+            val emailHash = sha256(email.trim().lowercase())
+            val user = userDao.getByLoginEmailHash(emailHash)
+
+            when {
+                user == null -> _loginError.value = "No account found for this email."
+                user.passwordHash != sha256(password) -> _loginError.value = "Wrong password."
+                else -> {
+                    // Login erfolgreich — User einloggen und alles laden
+                    _currentUserId.value = user.id
+                    loadAll()
+                    onSuccess(user.userType)   // userType direkt aus DB-Objekt übergeben
+                }
+            }
+        }
+    }
+
+    /** Löscht die Login-Fehlermeldung — z.B. wenn der User anfängt zu tippen */
+    fun clearLoginError() {
+        _loginError.value = null
     }
 
     // ── Profilbild ────────────────────────────────────────────────────────────
@@ -434,6 +477,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Erstellt einen neuen User in der DB und loggt ihn direkt ein.
+     * Passwort und E-Mail werden nur als SHA-256-Hash gespeichert — niemals im Klartext.
      * Wird aus dem CreateAccountScreen aufgerufen.
      */
     fun createUser(
@@ -442,21 +486,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         phone: String,
         location: String,
         userType: String,
+        password: String = "",
         onDone: () -> Unit
     ) {
         viewModelScope.launch {
             val year = java.time.LocalDate.now().year.toString()
+
+            // E-Mail und Passwort hashen — Klartext kommt nie in die DB
+            val emailHash    = if (email.isNotBlank()) sha256(email.trim().lowercase()) else ""
+            val passwordHash = if (password.isNotBlank()) sha256(password) else ""
+
             val newId = userDao.insert(
                 UserEntity(
-                    name        = "",        // Sicherheitsregel: name bleibt leer
-                    email       = "",        // Sicherheitsregel: email bleibt leer
-                    userType    = userType,
-                    credits     = 0.0,
-                    currency    = "EUR",
-                    displayName = displayName,
-                    phone       = phone,
-                    location    = location,
-                    memberSince = year
+                    name           = "",           // Sicherheitsregel: name bleibt leer
+                    email          = "",           // Sicherheitsregel: email bleibt leer
+                    userType       = userType,
+                    credits        = 0.0,
+                    currency       = "EUR",
+                    displayName    = displayName,
+                    phone          = phone,
+                    location       = location,
+                    memberSince    = year,
+                    passwordHash   = passwordHash,
+                    loginEmailHash = emailHash
                 )
             ).toInt()
             _currentUserId.value = newId

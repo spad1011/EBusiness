@@ -37,6 +37,13 @@ interface UserDAO {
     suspend fun getByEmail(email: String): UserEntity?
 
     /**
+     * User anhand des SHA-256-Hashes seiner E-Mail suchen.
+     * Wird beim Login verwendet — wir speichern keine Klartext-E-Mails.
+     */
+    @Query("SELECT * FROM users WHERE loginEmailHash = :hash LIMIT 1")
+    suspend fun getByLoginEmailHash(hash: String): UserEntity?
+
+    /**
      * Neuen User anlegen oder bestehenden überschreiben.
      * Gibt die generierte ID zurück.
      */

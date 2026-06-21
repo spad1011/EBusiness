@@ -78,5 +78,17 @@ data class UserEntity(
      * Jahr seit dem der User Mitglied ist, z.B. "2024".
      * Wird im ProfileScreen als "Member since …" angezeigt.
      */
-    val memberSince: String = "2026"
+    val memberSince: String = "2026",
+
+    /**
+     * SHA-256 Hash des Passworts — niemals Klartext speichern.
+     * Leer bei Demo-Usern (Fan/Host), die nur über Quick Test Login zugänglich sind.
+     */
+    val passwordHash: String = "",
+
+    /**
+     * SHA-256 Hash der E-Mail — nur für den Login-Lookup, niemals die echte E-Mail.
+     * So bleibt das email-Feld leer (Sicherheitsregel) und Login funktioniert trotzdem.
+     */
+    val loginEmailHash: String = ""
 )

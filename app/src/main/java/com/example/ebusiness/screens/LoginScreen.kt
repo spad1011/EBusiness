@@ -32,13 +32,17 @@ import com.example.ebusiness.ui.theme.StagePotPurple
  * Login-Screen — Einstiegspunkt der App.
  * Die "Quick Test Login"-Buttons umgehen die echte Auth und laden direkt den
  * passenden Demo-User aus der DB (Host oder Fan).
+ * Der normale "Sign In"-Button prüft E-Mail-Hash + Passwort-Hash gegen die DB.
  */
 @Composable
 fun LoginScreen(
     onLoginAsHost: () -> Unit,
     onLoginAsFan: () -> Unit,
     onCreateAccount: () -> Unit,
-    onGuestMode: () -> Unit
+    onGuestMode: () -> Unit,
+    onLogin: (String, String) -> Unit = { _, _ -> },
+    loginError: String? = null,
+    onClearError: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -195,29 +199,41 @@ fun LoginScreen(
 
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
+                        onValueChange = { email = it; onClearError() },
                         label = { Text("Email") },
                         placeholder = { Text("your.email@example.com") },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
-                        singleLine = true
+                        singleLine = true,
+                        isError = loginError != null
                     )
 
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = { password = it; onClearError() },
                         label = { Text("Password") },
                         placeholder = { Text("••••••••") },
                         leadingIcon = { Icon(Icons.Default.Lock, null) },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
-                        singleLine = true
+                        singleLine = true,
+                        isError = loginError != null
                     )
 
+                    // Fehlermeldung anzeigen wenn Login fehlschlägt
+                    if (loginError != null) {
+                        Text(
+                            loginError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     Button(
-                        onClick = onLoginAsFan,
+                        onClick = { onLogin(email, password) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827))

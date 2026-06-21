@@ -37,7 +37,7 @@ import com.example.ebusiness.ui.theme.StagePotPurple
 @Composable
 fun CreateAccountScreen(
     onBack: () -> Unit,
-    onSuccess: (displayName: String, email: String, phone: String, location: String, userType: String) -> Unit
+    onSuccess: (displayName: String, email: String, phone: String, location: String, userType: String, password: String) -> Unit
 ) {
     var step by remember { mutableIntStateOf(1) }
     var selectedAccountType by remember { mutableStateOf("Private User") }
@@ -243,7 +243,7 @@ fun CreateAccountScreen(
                                     "Event Host/Organizer" -> "host"
                                     else -> "fan"
                                 }
-                                onSuccess(fullName, email, phone, location, mappedType)
+                                onSuccess(fullName, email, phone, location, mappedType, password)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp),
@@ -254,7 +254,7 @@ fun CreateAccountScreen(
 
                         TextButton(
                             onClick = {
-                                onSuccess(fullName, email, phone, location, "fan")
+                                onSuccess(fullName, email, phone, location, "fan", "")
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {

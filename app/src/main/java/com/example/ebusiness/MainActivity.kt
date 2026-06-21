@@ -66,6 +66,7 @@ fun StagePotApp() {
         val currentUser    by vm.currentUser.collectAsState()
         val notifications  by vm.notifications.collectAsState()
         val paymentMethods by vm.paymentMethods.collectAsState()
+        val loginError     by vm.loginError.collectAsState()
 
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
         var userType      by remember { mutableStateOf("fan") }
@@ -154,20 +155,23 @@ fun StagePotApp() {
                     onCreateAccount = { currentScreen = Screen.CreateAccount },
                     onGuestMode = {
                         userType = "fan"; vm.loginAs("fan"); currentScreen = Screen.Home
-                    }
+                    },
+                    onLogin = { email, password ->
+                        vm.login(email, password) { uType ->
+                            userType = uType
+                            currentScreen = Screen.Home
+                        }
+                    },
+                    loginError   = loginError,
+                    onClearError = { vm.clearLoginError() }
                 )
                 is Screen.CreateAccount -> CreateAccountScreen(
                     onBack    = { currentScreen = Screen.Login },
-                    onSuccess = { displayName, email, phone, location, uType ->
+                    onSuccess = { displayName, email, phone, location, uType, pwd ->
                         userType = uType
-                        vm.createUser(
-                            displayName = displayName,
-                            email       = email,
-                            phone       = phone,
-                            location    = location,
-                            userType    = uType,
-                            onDone      = { currentScreen = Screen.Home }
-                        )
+                        vm.createUser(displayName, email, phone, location, uType, pwd) {
+                            currentScreen = Screen.Home
+                        }
                     }
                 )
                 is Screen.Home -> HomeScreen(

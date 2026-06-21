@@ -26,7 +26,7 @@ import com.example.ebusiness.repository.dao.*
         NotificationEntity::class,
         PaymentMethodEntity::class
     ],
-    version = 4,
+    version = 5,  // UserEntity: passwordHash + loginEmailHash für lokale Auth
     exportSchema = false
 )
 @TypeConverters(Converters::class)
