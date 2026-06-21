@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Haupt-Screen der App: Event-Liste mit Suche, Kategorie-Filter und Feature-Bannern.
+// Alle Events kommen als StateFlow aus dem ViewModel — keine Hardcodierung hier.
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,19 +27,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ebusiness.data.Event
-import com.example.ebusiness.data.MockData
+import com.example.ebusiness.data.currencySymbol
+import com.example.ebusiness.data.formatPrice
 
+/**
+ * Home-Screen mit Event-Liste.
+ * Filtert clientseitig nach Suchbegriff und Kategorie.
+ * Die Feature-Banner oben verlinken auf Secondary Market und Lottery Events.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     paddingValues: PaddingValues,
+    allEvents: List<Event>,
     onEventClick: (Int) -> Unit,
     onNavigateToTickets: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToAlerts: () -> Unit = {},
     onNavigateToImprint: () -> Unit = {},
+    onNavigateToSecondaryMarket: () -> Unit = {},
+    onNavigateToLotteryEvents: () -> Unit = {},
     isDarkMode: Boolean = false,
-    onToggleDarkMode: () -> Unit = {}
+    onToggleDarkMode: () -> Unit = {},
+    credits: Double = 0.0,
+    currency: String = "EUR"
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
@@ -44,7 +58,8 @@ fun HomeScreen(
 
     val categories = listOf("All", "Music", "Sports", "Comedy", "Food", "Conference", "Theater")
 
-    val filteredEvents = MockData.events.filter { event ->
+    // Clientseitiger Filter: Suche über Titel+Ort, optional Kategorie-Match
+    val filteredEvents = allEvents.filter { event ->
         val matchesSearch = event.title.contains(searchQuery, ignoreCase = true) ||
                 event.location.contains(searchQuery, ignoreCase = true)
         val matchesCategory = selectedCategory == "All" || event.category == selectedCategory
@@ -67,36 +82,18 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(Icons.Default.Paid, null,
+                    Icon(Icons.Default.Wallet, null,
                         tint = Color.White, modifier = Modifier.size(13.dp))
-                    Text("\$50.00", color = Color.White, fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold)
+                    Text(formatPrice(credits, currency),
+                        color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-            }
-            Spacer(Modifier.width(4.dp))
-            BadgedBox(
-                badge = { Badge { Text("2") } },
-                modifier = Modifier.clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onNavigateToAlerts() }
-            ) {
-                Icon(
-                    Icons.Default.Notifications, null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(24.dp)
-                )
             }
             Spacer(Modifier.width(4.dp))
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.Menu, "Menu",
-                        tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.Menu, "Menu", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text("Events") },
                         leadingIcon = { Icon(Icons.Default.Home, null) },
@@ -110,7 +107,7 @@ fun HomeScreen(
                     DropdownMenuItem(
                         text = { Text("Secondary Market") },
                         leadingIcon = { Icon(Icons.Default.Storefront, null) },
-                        onClick = { menuExpanded = false }
+                        onClick = { menuExpanded = false; onNavigateToSecondaryMarket() }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
@@ -149,6 +146,7 @@ fun HomeScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
+            // Category filter chips
             item {
                 Row(
                     modifier = Modifier
@@ -162,9 +160,7 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50.dp))
-                                .background(
-                                    if (selected) Color(0xFF111827) else Color.Transparent
-                                )
+                                .background(if (selected) Color(0xFF111827) else Color.Transparent)
                                 .border(
                                     width = 1.dp,
                                     color = if (selected) Color.Transparent
@@ -179,17 +175,16 @@ fun HomeScreen(
                         ) {
                             Text(
                                 category,
-                                color = if (selected) Color.White
-                                        else MaterialTheme.colorScheme.onSurface,
+                                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp,
-                                fontWeight = if (selected) FontWeight.SemiBold
-                                             else FontWeight.Normal
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                             )
                         }
                     }
                 }
             }
 
+            // Feature banners
             item {
                 Row(
                     modifier = Modifier
@@ -200,18 +195,12 @@ fun HomeScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(280.dp)
-                            .height(76.dp)
+                            .width(280.dp).height(76.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color(0xFFEC4899), Color(0xFFA855F7))
-                                )
-                            )
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {}
+                            .background(Brush.horizontalGradient(listOf(Color(0xFFEC4899), Color(0xFFA855F7))))
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                                onNavigateToSecondaryMarket()
+                            }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Row(
@@ -229,8 +218,7 @@ fun HomeScreen(
                             }
                             Column {
                                 Text("Secondary Market",
-                                    color = Color.White, fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp)
+                                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Text("Buy & sell verified tickets",
                                     color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
                             }
@@ -238,14 +226,12 @@ fun HomeScreen(
                     }
                     Box(
                         modifier = Modifier
-                            .width(280.dp)
-                            .height(76.dp)
+                            .width(280.dp).height(76.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color(0xFF4A8AFF), Color(0xFF6B60F0))
-                                )
-                            )
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF4A8AFF), Color(0xFF6B60F0))))
+                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                                onNavigateToLotteryEvents()
+                            }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Row(
@@ -263,8 +249,7 @@ fun HomeScreen(
                             }
                             Column {
                                 Text("Lottery Events",
-                                    color = Color.White, fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp)
+                                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Text("Fair access to sold-out shows",
                                     color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
                             }
@@ -274,6 +259,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
+            // Section header
             item {
                 Text(
                     "Upcoming Events",
@@ -284,6 +270,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(4.dp))
             }
 
+            // Events list
             if (filteredEvents.isEmpty()) {
                 item {
                     Box(
@@ -298,7 +285,7 @@ fun HomeScreen(
             } else {
                 items(filteredEvents) { event ->
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        EventCard(event = event, onClick = { onEventClick(event.id) })
+                        EventCard(event = event, currency = currency, onClick = { onEventClick(event.id) })
                     }
                 }
             }
@@ -306,14 +293,20 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Event-Karte in der Liste: farbiges Header-Bild, Titel, Preis, Kategorie-Badge,
+ * Datum, Ort, Veranstalter und verbleibende Tickets.
+ * Lottery-Events bekommen ein oranges Badge oben rechts.
+ */
 @Composable
-fun EventCard(event: Event, onClick: () -> Unit) {
+fun EventCard(event: Event, currency: String = "EUR", onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
+            // Image area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -342,6 +335,7 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                 }
             }
 
+            // Content
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -360,7 +354,7 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "$${event.price}",
+                        formatPrice(event.price, currency),
                         color = Color(0xFF4A8AFF),
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp

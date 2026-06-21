@@ -1,6 +1,10 @@
 package com.example.ebusiness.screens
 
+// Verwaltung gespeicherter Zahlungsmethoden aus der DB.
+// User kann Methoden hinzufügen (onAddMethod) oder löschen (onRemoveMethod).
+
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,50 +21,66 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ebusiness.entities.PaymentMethodEntity
 
-data class SavedPaymentMethod(
-    val id: Int,
-    val name: String,
-    val type: String,
-    val emoji: String,
-    val isVerified: Boolean
-)
-
+/**
+ * Zahlungsmethoden-Screen.
+ * Gespeicherte Methoden kommen aus der DB (PaymentMethodEntity).
+ * Neue Methoden werden per onAddMethod-Callback ans ViewModel weitergegeben.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentMethodsScreen(onBack: () -> Unit) {
-    val savedMethods = remember {
-        mutableStateListOf(
-            SavedPaymentMethod(1, "PayPal Business", "paypal", "💳", true),
-            SavedPaymentMethod(2, "Business Visa", "card", "💳", true),
-        )
-    }
+fun PaymentMethodsScreen(
+    onBack: () -> Unit,
+    savedMethods: List<PaymentMethodEntity> = emptyList(),
+    onAddMethod: (name: String, type: String, emoji: String) -> Unit = { _, _, _ -> },
+    onRemoveMethod: (id: Int) -> Unit = {}
+) {
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Column {
-                    Text("Payment Methods", fontWeight = FontWeight.Bold)
-                    Text("Manage your payment options",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
-                }
-            },
-            navigationIcon = {
+        // Gradient banner with back arrow inside — same style as Lottery/Secondary screens
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
+                    )
+                )
+                .statusBarsPadding()
+                .padding(start = 4.dp, end = 20.dp, top = 4.dp, bottom = 26.dp)
+        ) {
+            Column {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null,
-                        tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                titleContentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Payment Methods",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Manage your payment options",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -142,7 +162,7 @@ fun PaymentMethodsScreen(onBack: () -> Unit) {
                                     }
                                 }
                                 IconButton(
-                                    onClick = { savedMethods.remove(method) },
+                                    onClick = { onRemoveMethod(method.id) },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(Icons.Default.Delete, null,
@@ -160,10 +180,10 @@ fun PaymentMethodsScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium)
 
             val newMethods = listOf(
-                "PayPal"           to "💳",
-                "Google Play"      to "🎮",
-                "Apple Pay"        to "🍎",
-                "Credit/Debit Card" to "💳",
+                Triple("PayPal",            "paypal",      "💳"),
+                Triple("Google Pay",        "google_pay",  "🎮"),
+                Triple("Apple Pay",         "apple_pay",   "🍎"),
+                Triple("Credit/Debit Card", "card",        "💳"),
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -172,21 +192,11 @@ fun PaymentMethodsScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        row.forEach { (name, emoji) ->
+                        row.forEach { (name, type, emoji) ->
                             Card(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable {
-                                        savedMethods.add(
-                                            SavedPaymentMethod(
-                                                savedMethods.size + 10,
-                                                name,
-                                                "new",
-                                                emoji,
-                                                false
-                                            )
-                                        )
-                                    },
+                                    .clickable { onAddMethod(name, type, emoji) },
                                 shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                                 colors = CardDefaults.cardColors(

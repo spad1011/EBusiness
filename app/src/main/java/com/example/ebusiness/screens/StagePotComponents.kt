@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Wiederverwendbare UI-Komponenten die in mehreren Screens vorkommen:
+// StagePotBrandBar (weiße Kopfzeile) und StagePotBanner (blau-violetter Hero-Bereich).
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ebusiness.ui.theme.StagePotPurple
 
 /**
  * White StagePot brand bar: purple circle logo + name/subtitle + trailing actions.
@@ -25,48 +27,55 @@ import com.example.ebusiness.ui.theme.StagePotPurple
  */
 @Composable
 fun StagePotBrandBar(
+    navigationIcon: @Composable (() -> Unit)? = null,
+    // false when the parent Scaffold already applies top inset (avoids double gap)
+    applyStatusBarPadding: Boolean = true,
     actions: @Composable () -> Unit = {}
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(StagePotPurple, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.ConfirmationNumber,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
+            // Optional back / navigation icon on the far left
+            if (navigationIcon != null) {
+                navigationIcon()
             }
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.ConfirmationNumber,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "StagePot",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     "Fair Tickets for Real Fans",
-                    fontSize = 10.sp,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // Caller-supplied action icons (e.g. hamburger, add button)
+            // Caller-supplied action icons (credits chip, bell, menu, etc.)
             actions()
         }
     }
@@ -124,11 +133,14 @@ fun StagePotBanner(
                     shape = RoundedCornerShape(14.dp),
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
+                        disabledIndicatorColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
             }

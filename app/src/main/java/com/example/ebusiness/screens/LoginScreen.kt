@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Login-Screen mit Schnell-Login-Buttons (Host / Fan) für den Demo-Betrieb.
+// Enthält auch einen "Passwort vergessen"-Dialog mit simuliertem E-Mail-Versand.
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -24,6 +28,11 @@ import androidx.compose.ui.unit.sp
 import com.example.ebusiness.ui.theme.StagePotGradient
 import com.example.ebusiness.ui.theme.StagePotPurple
 
+/**
+ * Login-Screen — Einstiegspunkt der App.
+ * Die "Quick Test Login"-Buttons umgehen die echte Auth und laden direkt den
+ * passenden Demo-User aus der DB (Host oder Fan).
+ */
 @Composable
 fun LoginScreen(
     onLoginAsHost: () -> Unit,
@@ -33,6 +42,79 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    var showForgotDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    var showSentConfirmation by remember { mutableStateOf(false) }
+
+    if (showForgotDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showForgotDialog = false
+                resetEmail = ""
+                showSentConfirmation = false
+            },
+            icon = { Icon(Icons.Default.Email, null) },
+            title = { Text("Reset Password") },
+            text = {
+                if (showSentConfirmation) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, null,
+                            tint = Color(0xFF16A34A),
+                            modifier = Modifier.size(40.dp))
+                        Text(
+                            "Password reset email sent to\n$resetEmail",
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            "Check your inbox and follow the instructions.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Enter your email address and we'll send you a link to reset your password.")
+                        OutlinedTextField(
+                            value = resetEmail,
+                            onValueChange = { resetEmail = it },
+                            label = { Text("Email address") },
+                            leadingIcon = { Icon(Icons.Default.Email, null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (showSentConfirmation) {
+                    Button(onClick = {
+                        showForgotDialog = false
+                        resetEmail = ""
+                        showSentConfirmation = false
+                    }) { Text("Done") }
+                } else {
+                    Button(
+                        onClick = { if (resetEmail.isNotBlank()) showSentConfirmation = true },
+                        enabled = resetEmail.isNotBlank()
+                    ) { Text("Send Reset Link") }
+                }
+            },
+            dismissButton = {
+                if (!showSentConfirmation) {
+                    TextButton(onClick = {
+                        showForgotDialog = false
+                        resetEmail = ""
+                    }) { Text("Cancel") }
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -72,7 +154,7 @@ fun LoginScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text("🧪 Quick Test Login:", color = Color(0xFF4A8AFF), fontWeight = FontWeight.Medium, fontSize = 13.sp)
@@ -84,15 +166,15 @@ fun LoginScreen(
                         OutlinedButton(
                             onClick = onLoginAsHost,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF111827)),
-                            border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) { Text("Login as Host", fontSize = 12.sp) }
 
                         OutlinedButton(
                             onClick = onLoginAsFan,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF111827)),
-                            border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) { Text("Login as Fan", fontSize = 12.sp) }
                     }
                 }
@@ -103,7 +185,7 @@ fun LoginScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -143,7 +225,7 @@ fun LoginScreen(
                         Text("Sign In", modifier = Modifier.padding(vertical = 4.dp))
                     }
 
-                    TextButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { showForgotDialog = true }, modifier = Modifier.fillMaxWidth()) {
                         Text("Forgot password?", color = Color(0xFF4A8AFF))
                     }
 

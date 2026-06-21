@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Ticket-Übersicht mit drei Tabs: Active, Past, Lottery.
+// Filtert clientseitig nach ticket.status — Daten kommen als Flow aus dem ViewModel.
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,16 +23,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ebusiness.data.Ticket
+import com.example.ebusiness.data.currencySymbol
+import com.example.ebusiness.data.formatPrice
 
+/**
+ * Ticket-Liste mit Tab-Navigation (Active / Past / Lottery).
+ * initialTab wird vom ProfileScreen gesetzt wenn man von dort direkt navigiert.
+ */
 @Composable
 fun TicketsScreen(
     paddingValues: PaddingValues,
     tickets: List<Ticket>,
-    onTicketClick: (Int) -> Unit
+    initialTab: Int = 0,
+    onTicketClick: (Int) -> Unit,
+    credits: Double = 0.0,
+    currency: String = "EUR",
+    isDarkMode: Boolean = false,
+    onToggleDarkMode: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToImprint: () -> Unit = {},
+    onNavigateToSecondaryMarket: () -> Unit = {},
+    userType: String = "fan"
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(initialTab) }
+    var menuExpanded by remember { mutableStateOf(false) }
     val tabs = listOf("Active", "Past", "Lottery")
 
+    // Status-basierter Filter: Tab-Index entspricht direkt dem Status-String
     val filteredTickets = tickets.filter { ticket ->
         when (selectedTab) {
             0 -> ticket.status == "Active"
@@ -44,7 +65,45 @@ fun TicketsScreen(
             .fillMaxSize()
             .padding(bottom = paddingValues.calculateBottomPadding())
     ) {
-        StagePotBrandBar()
+        StagePotBrandBar {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFFFFB300), Color(0xFFFF6D00))))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Wallet, null,
+                        tint = Color.White, modifier = Modifier.size(13.dp))
+                    Text(formatPrice(credits, currency),
+                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.width(4.dp))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.Menu, null, tint = MaterialTheme.colorScheme.onSurface)
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Home") },
+                        leadingIcon = { Icon(Icons.Default.Home, null) },
+                        onClick = { menuExpanded = false; onNavigateToHome() })
+                    HorizontalDivider()
+                    DropdownMenuItem(text = { Text("Profile") },
+                        leadingIcon = { Icon(Icons.Default.Person, null) },
+                        onClick = { menuExpanded = false; onNavigateToProfile() })
+                    DropdownMenuItem(text = { Text("Imprint") },
+                        leadingIcon = { Icon(Icons.Default.Info, null) },
+                        onClick = { menuExpanded = false; onNavigateToImprint() })
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(if (isDarkMode) "Light Mode" else "Dark Mode") },
+                        leadingIcon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, null) },
+                        onClick = { menuExpanded = false; onToggleDarkMode() })
+                }
+            }
+        }
 
         StagePotBanner(
             title = "My Tickets",
@@ -116,15 +175,20 @@ fun TicketsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(filteredTickets, key = { it.id }) { ticket ->
-                    TicketCard(ticket = ticket, onClick = { onTicketClick(ticket.id) })
+                    TicketCard(ticket = ticket, currency = currency, onClick = { onTicketClick(ticket.id) })
                 }
             }
         }
     }
 }
 
+/**
+ * Ticket-Karte in der Liste: farbiger Gradient-Header, Sitzplatz-/Preis-Infos
+ * und Buttons für QR-Code-Ansicht und Download.
+ * Vergangene Tickets (status != "Active") bekommen einen grauen Gradient.
+ */
 @Composable
-private fun TicketCard(ticket: Ticket, onClick: () -> Unit) {
+private fun TicketCard(ticket: Ticket, currency: String = "EUR", onClick: () -> Unit) {
     val isActive = ticket.status == "Active"
     val gradientColors = if (isActive)
         listOf(Color(0xFF4A8AFF), Color(0xFF6B60F0))
@@ -195,7 +259,7 @@ private fun TicketCard(ticket: Ticket, onClick: () -> Unit) {
                 VerticalDivider(modifier = Modifier.height(36.dp))
                 TicketInfoCell("Seat", ticket.seat)
                 VerticalDivider(modifier = Modifier.height(36.dp))
-                TicketInfoCell("Price", "$${ticket.price}")
+                TicketInfoCell("Price", formatPrice(ticket.price, currency))
             }
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 14.dp))
@@ -223,43 +287,41 @@ private fun TicketCard(ticket: Ticket, onClick: () -> Unit) {
                 }
             }
 
-            // Transfer / Download / More row
-            Row(
+            // Download row
+            var showDownloadDialog by remember { mutableStateOf(false) }
+
+            OutlinedButton(
+                onClick = { showDownloadDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
             ) {
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                ) {
-                    Icon(Icons.Default.Send, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Transfer", fontSize = 12.sp)
-                }
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                ) {
-                    Icon(Icons.Default.FileDownload, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Download", fontSize = 12.sp)
-                }
-                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.MoreVert, null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Icon(Icons.Default.FileDownload, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Download Ticket", fontSize = 13.sp)
+            }
+
+            if (showDownloadDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDownloadDialog = false },
+                    icon  = { Icon(Icons.Default.FileDownload, null) },
+                    title = { Text("Download Ticket") },
+                    text  = { Text("Download this ticket as a PDF to your device?") },
+                    confirmButton = {
+                        Button(onClick = { showDownloadDialog = false }) { Text("OK") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") }
+                    }
+                )
             }
         }
     }
 }
 
+/** Einzelne Info-Zelle in der Ticket-Karte (Section / Seat / Price) */
 @Composable
 private fun TicketInfoCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

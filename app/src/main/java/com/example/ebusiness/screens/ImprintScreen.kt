@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Impressum-Screen mit Firmendaten, Kontaktinfos und rechtlichen Hinweisen.
+// Rein statischer Screen — keine Daten aus der DB.
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +18,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+/**
+ * Impressum-Screen — gesetzlich vorgeschriebene Angaben über StagePot Inc.
+ * Aufgeteilt in Sektionen via ImprintSection-Composable.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImprintScreen(onBack: () -> Unit) {
@@ -135,6 +142,7 @@ fun ImprintScreen(onBack: () -> Unit) {
     }
 }
 
+/** Eine Impressums-Sektion mit Icon, Titel und beliebigem Inhalt darunter */
 @Composable
 private fun ImprintSection(
     icon: ImageVector,
@@ -160,6 +168,7 @@ private fun ImprintSection(
     }
 }
 
+/** Einzelne Kontaktzeile mit kleinem Icon, Label und klickbarem Wert */
 @Composable
 private fun ImprintContactRow(icon: ImageVector, label: String, value: String) {
     Row(

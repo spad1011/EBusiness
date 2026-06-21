@@ -1,5 +1,9 @@
 package com.example.ebusiness.screens
 
+// Registrierungsflow in zwei Schritten:
+// 1. Accountdaten (Name, E-Mail, Passwort, Standort)
+// 2. Zahlungsmethoden (optional, kann später hinzugefügt werden)
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,10 +29,15 @@ import androidx.compose.ui.unit.sp
 import com.example.ebusiness.ui.theme.StagePotGradient
 import com.example.ebusiness.ui.theme.StagePotPurple
 
+/**
+ * Registrierungsscreen — führt den User in zwei Schritten durch die Kontoerstellung.
+ * Am Ende wird onSuccess mit den eingegebenen Daten aufgerufen; das ViewModel
+ * legt den User dann in der DB an und loggt ihn direkt ein.
+ */
 @Composable
 fun CreateAccountScreen(
     onBack: () -> Unit,
-    onSuccess: () -> Unit
+    onSuccess: (displayName: String, email: String, phone: String, location: String, userType: String) -> Unit
 ) {
     var step by remember { mutableIntStateOf(1) }
     var selectedAccountType by remember { mutableStateOf("Private User") }
@@ -85,7 +94,7 @@ fun CreateAccountScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -229,7 +238,13 @@ fun CreateAccountScreen(
                         }
 
                         Button(
-                            onClick = onSuccess,
+                            onClick = {
+                                val mappedType = when (selectedAccountType) {
+                                    "Event Host/Organizer" -> "host"
+                                    else -> "fan"
+                                }
+                                onSuccess(fullName, email, phone, location, mappedType)
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
@@ -237,7 +252,12 @@ fun CreateAccountScreen(
                             Text("Create Account", modifier = Modifier.padding(vertical = 4.dp))
                         }
 
-                        TextButton(onClick = onSuccess, modifier = Modifier.fillMaxWidth()) {
+                        TextButton(
+                            onClick = {
+                                onSuccess(fullName, email, phone, location, "fan")
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text("Skip for Now", color = Color.Gray)
                         }
 
@@ -264,6 +284,7 @@ fun CreateAccountScreen(
     }
 }
 
+/** Auswahlkarte für den Account-Typ (Private User / Professional / Host) */
 @Composable
 private fun AccountTypeCard(
     type: String,
@@ -280,7 +301,7 @@ private fun AccountTypeCard(
             if (selected) StagePotPurple else Color.LightGray
         ),
         colors = CardDefaults.outlinedCardColors(
-            containerColor = if (selected) StagePotPurple.copy(alpha = 0.05f) else Color.White
+            containerColor = if (selected) StagePotPurple.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -302,6 +323,7 @@ private fun AccountTypeCard(
     }
 }
 
+/** Kleine Kachel für eine Zahlungsmethode im Registrierungsschritt 2 */
 @Composable
 private fun PaymentMethodCard(
     method: String,
@@ -324,7 +346,7 @@ private fun PaymentMethodCard(
             if (selected) StagePotPurple else Color.LightGray
         ),
         colors = CardDefaults.outlinedCardColors(
-            containerColor = if (selected) StagePotPurple.copy(alpha = 0.05f) else Color.White
+            containerColor = if (selected) StagePotPurple.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
         )
     ) {
         Column(

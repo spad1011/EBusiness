@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Profil-Screen: Avatar, Kontaktdaten, Credits-Widget, Account-Settings und Navigation.
+// Unterscheidet zwischen Fan- und Host-Ansicht (isHost = userType == "host").
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +25,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ebusiness.data.Event
+import com.example.ebusiness.data.Ticket
+import com.example.ebusiness.data.currencySymbol
+import com.example.ebusiness.data.formatPrice
+import com.example.ebusiness.data.convertFromEur
 
+/**
+ * Profil-Screen mit Avatar, Kontaktinformationen, Credits-Karte und Einstellungs-Links.
+ * Hosts sehen Events/Tickets/Zahlungen als Stat-Karten.
+ * Fans sehen Home/Active-Tickets/besuchte Standorte.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -36,18 +49,39 @@ fun ProfileScreen(
     onEditProfile: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
     onNavigateToTickets: () -> Unit = {},
+    onNavigateToTicketsTab: (Int) -> Unit = {},
+    onNavigateToOrganize: () -> Unit = {},
     onNavigateToImprint: () -> Unit = {},
-    userType: String = "fan"   // "fan" oder "host"
+    onNavigateToSecondaryMarket: () -> Unit = {},
+    onAddCredits: () -> Unit = {},
+    onHelpCenter: () -> Unit = {},
+    onAppSettings: () -> Unit = {},
+    tickets: List<Ticket> = emptyList(),
+    avatarUrl: String = "",
+    onAvatarChange: (String) -> Unit = {},
+    userType: String = "fan",
+    credits: Double = 0.0,
+    currency: String = "EUR",
+    displayName: String = "",
+    userEmail: String = "",
+    userPhone: String = "",
+    userLocation: String = "",
+    memberSince: String = "2026",
+    paymentMethodCount: Int = 0,
+    events: List<Event> = emptyList()
 ) {
+    val sym    = currencySymbol(currency)
     val isHost = userType == "host"
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     fun snack(msg: String) { scope.launch { snackbarHostState.showSnackbar(msg) } }
+
     var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        snackbarHost    = { SnackbarHost(snackbarHostState) },
+        containerColor  = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -55,6 +89,7 @@ fun ProfileScreen(
                 .padding(innerPadding)
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
+            // ─── Brand bar ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -65,11 +100,8 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(38.dp)
-                    ) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(38.dp)) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.ConfirmationNumber, null,
                                 tint = Color.White, modifier = Modifier.size(20.dp))
@@ -83,6 +115,7 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    // Credits chip
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
@@ -95,33 +128,17 @@ fun ProfileScreen(
                         ) {
                             Icon(Icons.Default.Wallet, null,
                                 tint = Color.White, modifier = Modifier.size(13.dp))
-                            Text(
-                                if (isHost) "\$50.00" else "\$25.00",
+                            Text(formatPrice(credits, currency),
                                 color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                     Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = onNavigateToAlerts,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.NotificationsNone, null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(22.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
                     Box {
-                        IconButton(
-                            onClick = { menuExpanded = true },
-                            modifier = Modifier.size(32.dp)
-                        ) {
+                        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Menu, null,
                                 tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp))
                         }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
+                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(
                                 text = { Text("Events") },
                                 leadingIcon = { Icon(Icons.Default.Home, null) },
@@ -135,7 +152,7 @@ fun ProfileScreen(
                             DropdownMenuItem(
                                 text = { Text("Secondary Market") },
                                 leadingIcon = { Icon(Icons.Default.Storefront, null) },
-                                onClick = { menuExpanded = false; snack("Secondary Market – coming soon") }
+                                onClick = { menuExpanded = false; onNavigateToSecondaryMarket() }
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
@@ -146,7 +163,9 @@ fun ProfileScreen(
                             HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(if (isDarkMode) "Light Mode" else "Dark Mode") },
-                                leadingIcon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, null) },
+                                leadingIcon = {
+                                    Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, null)
+                                },
                                 onClick = { menuExpanded = false; onToggleDarkMode() }
                             )
                         }
@@ -154,75 +173,131 @@ fun ProfileScreen(
                 }
             }
 
+            // ─── Avatar / name hero ───────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF4A8AFF),
-                                Color(0xFF6B60F0)
-                            )
-                        )
-                    )
+                    .background(Brush.verticalGradient(listOf(Color(0xFF4A8AFF), Color(0xFF6B60F0))))
                     .padding(top = 32.dp, bottom = 28.dp, start = 20.dp, end = 20.dp)
             ) {
+                var showAvatarDialog by remember { mutableStateOf(false) }
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
+                        modifier = Modifier.size(96.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(86.dp)
+                                .size(96.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF8B7FCC)),
+                                .background(Color.White),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(52.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(86.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF8B7FCC)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Person, null,
+                                    tint = Color.White, modifier = Modifier.size(52.dp))
+                            }
+                        }
+                        // Camera button overlay
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .align(Alignment.BottomEnd)
+                                .clip(CircleShape)
+                                .background(Color(0xFF111827))
+                                .clickable { showAvatarDialog = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CameraAlt, null,
+                                tint = Color.White, modifier = Modifier.size(15.dp))
                         }
                     }
+
+                if (showAvatarDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showAvatarDialog = false },
+                        icon  = { Icon(Icons.Default.CameraAlt, null) },
+                        title = { Text("Profile Photo") },
+                        text  = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Choose how to add your photo:")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            showAvatarDialog = false
+                                            onAvatarChange("camera")
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.CameraAlt, null,
+                                            modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Camera")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            showAvatarDialog = false
+                                            onAvatarChange("gallery")
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Photo, null,
+                                            modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Gallery")
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showAvatarDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        if (isHost) "Event Host Pro" else "Music Fan",
+                        displayName.ifBlank { if (isHost) "Event Host" else "Fan" },
                         fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color.White
+                        fontSize   = 24.sp,
+                        color      = Color.White
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (isHost) "test_host@stagepot.com" else "test_fan@stagepot.com",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White
-                    ) {
+                    if (userEmail.isNotBlank()) {
+                        Text(userEmail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f))
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    Surface(shape = RoundedCornerShape(20.dp), color = Color.White) {
                         Text(
-                            "Member since 2024",
+                            "Member since $memberSince",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            style      = MaterialTheme.typography.labelMedium,
+                            color      = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
 
+            // ─── Scrollable body ─────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -231,32 +306,74 @@ fun ProfileScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                // Stat cards
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (isHost) {
-                        StatCard(Modifier.weight(1f), Icons.Default.Event,       "8",     "Events",   Color(0xFF7C3AED), onClick = { snack("My Events – coming soon") })
-                        StatCard(Modifier.weight(1f), Icons.Default.TrendingUp,  "\$45K", "Revenue",  Color(0xFF16A34A), onClick = { snack("Revenue Analytics – coming soon") })
-                        StatCard(Modifier.weight(1f), Icons.Default.People,      "12",    "Attended", Color(0xFFFFB300), onClick = { snack("Attendees – coming soon") })
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.Event,
+                            "${events.size}", "Events",  Color(0xFF7C3AED),
+                            onClick = { onNavigateToOrganize() })
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.TrendingUp,
+                            "${tickets.size}", "Tickets", Color(0xFF16A34A),
+                            onClick = { onNavigateToTicketsTab(0) })
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.People,
+                            "${paymentMethodCount}", "Payments", Color(0xFFFFB300),
+                            onClick = { onPaymentMethods() })
                     } else {
-                        StatCard(Modifier.weight(1f), Icons.Default.ConfirmationNumber, "12", "Tickets",   Color(0xFF7C3AED), onClick = { snack("My Tickets – coming soon") })
-                        StatCard(Modifier.weight(1f), Icons.Default.Favorite,           "5",  "Favorites", Color(0xFFEC4899), onClick = { snack("Favorites – coming soon") })
-                        StatCard(Modifier.weight(1f), Icons.Default.LocationOn,         "3",  "Cities",    Color(0xFF16A34A), onClick = { snack("Cities visited – coming soon") })
+                        val uniqueLocations = tickets.map { it.eventLocation }.toSet().toList()
+                        var showLocationsDialog by remember { mutableStateOf(false) }
+
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.Home,
+                            "", "Home", Color(0xFF7C3AED),
+                            onClick = { onNavigateToHome() })
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.Favorite,
+                            "${tickets.count { it.status == "Active" }}", "Active", Color(0xFFEC4899),
+                            onClick = { onNavigateToTicketsTab(0) })
+                        ProfileStatCard(Modifier.weight(1f), Icons.Default.LocationOn,
+                            "${uniqueLocations.size}", "Locations", Color(0xFF16A34A),
+                            onClick = { showLocationsDialog = true })
+
+                        if (showLocationsDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showLocationsDialog = false },
+                                icon  = { Icon(Icons.Default.LocationOn, null,
+                                    tint = Color(0xFF16A34A)) },
+                                title = { Text("My Locations") },
+                                text  = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        if (uniqueLocations.isEmpty()) {
+                                            Text("No locations yet — buy a ticket to see locations here.",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        } else {
+                                            uniqueLocations.forEach { location ->
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Icon(Icons.Default.LocationOn, null,
+                                                        tint = Color(0xFF16A34A),
+                                                        modifier = Modifier.size(16.dp))
+                                                    Text(location,
+                                                        style = MaterialTheme.typography.bodyMedium)
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(onClick = { showLocationsDialog = false }) { Text("Close") }
+                                }
+                            )
+                        }
                     }
                 }
 
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    onClick = { snack("Credits – coming soon") }
-                ) {
+                // Credits card
+                Card(shape = RoundedCornerShape(16.dp), onClick = { onAddCredits() }) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFFFFB300), Color(0xFFFF6D00))
-                                )
+                                Brush.horizontalGradient(listOf(Color(0xFFFFB300), Color(0xFFFF6D00)))
                             )
                             .padding(18.dp)
                     ) {
@@ -270,93 +387,85 @@ fun ProfileScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(Icons.Default.Wallet, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                    Text("Credits Balance", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                    Icon(Icons.Default.Wallet, null,
+                                        tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Text("Credits Balance",
+                                        color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                                 }
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = Color.White.copy(alpha = 0.25f)
-                                ) {
+                                Surface(shape = RoundedCornerShape(20.dp),
+                                    color = Color.White.copy(alpha = 0.25f)) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Icon(Icons.Default.Add, null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(14.dp))
+                                            tint = Color.White, modifier = Modifier.size(14.dp))
                                         Text("Add", color = Color.White,
                                             fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            Text(
-                                if (isHost) "\$50.00" else "\$25.00",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                "Available for lottery entries",
+                            Text(formatPrice(credits, currency),
+                                fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Available for lottery entries",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
+                                color = Color.White.copy(alpha = 0.85f))
                             Spacer(Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Info, null,
-                                    tint = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(12.dp))
+                                    tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(12.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "Earn credits from lottery cashback",
+                                Text("Earn credits from lottery cashback",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.7f)
-                                )
+                                    color = Color.White.copy(alpha = 0.7f))
                             }
                         }
                     }
                 }
 
-                ProfileSection(title = "Contact Information") {
-                    ContactItem(icon = Icons.Default.Email, label = "Email",
-                        value = if (isHost) "test_host@stagepot.com" else "test_fan@stagepot.com",
-                        onClick = { snack("Email copied to clipboard") })
+                // Contact information
+                ProfileSection("Contact Information") {
+                    ContactInfoItem(Icons.Default.Email, "Email",
+                        userEmail.ifBlank { "—" }) { snack("Email copied") }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ContactItem(icon = Icons.Default.Phone, label = "Phone",
-                        value = if (isHost) "+1 (555) 987-6543" else "+1 (555) 234-5678",
-                        onClick = { snack("Phone number copied to clipboard") })
+                    ContactInfoItem(Icons.Default.Phone, "Phone",
+                        userPhone.ifBlank { "—" }) { snack("Phone copied") }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ContactItem(icon = Icons.Default.LocationOn, label = "Location",
-                        value = if (isHost) "Los Angeles, CA" else "Berlin, Deutschland",
-                        onClick = { snack("Opening maps – coming soon") })
+                    ContactInfoItem(Icons.Default.LocationOn, "Location",
+                        userLocation.ifBlank { "—" }) { snack("Opening maps — coming soon") }
                 }
 
-                ProfileSection(title = "Account Settings") {
-                    ProfileItem(Icons.Default.Edit, "Edit Profile") { onEditProfile() }
+                // Account settings
+                ProfileSection("Account Settings") {
+                    ProfItem(Icons.Default.Edit, "Edit Profile") { onEditProfile() }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItemWithBadge(Icons.Default.CreditCard, "Payment Methods", badgeCount = 2) { onPaymentMethods() }
+                    ProfItemBadge(Icons.Default.CreditCard, "Payment Methods",
+                        badgeCount = paymentMethodCount) { onPaymentMethods() }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItem(Icons.Default.Notifications, "Notifications") { onNavigateToAlerts() }
+                    ProfItem(Icons.Default.Notifications, "Notifications") { onNavigateToAlerts() }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItem(Icons.Default.BarChart, "Analytics & Reports") { snack("Analytics – kommt bald") }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItemWithBadge(Icons.Default.Verified, "Verification Status", badgeCount = -1) { snack("Account ist verifiziert ✓") }
+                    ProfItemBadge(Icons.Default.Verified, "Verification Status", badgeCount = -1) {
+                        snack("Account is verified ✓")
+                    }
                 }
 
-                ProfileSection(title = "Support") {
-                    ProfileItem(Icons.Default.CurrencyExchange, "Currency Settings") { onCurrencySettings() }
+                // Support
+                ProfileSection("Support") {
+                    ProfItem(Icons.Default.CurrencyExchange, "Currency Settings") { onCurrencySettings() }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItem(Icons.Default.HelpOutline, "Help Center") { snack("Hilfe: support@stagepot.com") }
+                    ProfItem(Icons.Default.HelpOutline, "Help Center") { onHelpCenter() }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ProfileItem(Icons.Default.Settings, "App Settings") { snack("App-Einstellungen – kommt bald") }
+                    ProfItem(Icons.Default.Settings, "App Settings") { onAppSettings() }
                 }
 
+                // Logout
                 OutlinedButton(
                     onClick = onLogout,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
+                    shape    = RoundedCornerShape(12.dp),
+                    colors   = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     ),
                     border = androidx.compose.foundation.BorderStroke(
@@ -379,10 +488,12 @@ fun ProfileScreen(
     }
 }
 
+// ─── Private helpers ─────────────────────────────────────────────────────────
 
+/** Klickbare Stat-Karte oben im Profil: Icon, Zahl und Label */
 @Composable
-private fun StatCard(
-    modifier: Modifier = Modifier,
+private fun ProfileStatCard(
+    modifier: Modifier,
     icon: ImageVector,
     value: String,
     label: String,
@@ -390,53 +501,36 @@ private fun StatCard(
     onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier  = modifier,
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp),
-        onClick = onClick
+        onClick   = onClick
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp, horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(24.dp))
             Text(value, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(label,
-                style = MaterialTheme.typography.labelSmall,
+            Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-@Composable
-private fun StatItem(icon: ImageVector, value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp))
-        Spacer(Modifier.height(4.dp))
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
+/** Gruppiert mehrere Profil-Einträge unter einem Abschnittstitel in einer Card */
 @Composable
 private fun ProfileSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
+        Text(title,
+            style      = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-        )
+            modifier   = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
         Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape     = RoundedCornerShape(16.dp),
+            colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) { content() }
@@ -444,8 +538,11 @@ private fun ProfileSection(title: String, content: @Composable ColumnScope.() ->
     }
 }
 
+/** Kontaktinfo-Zeile: Icon + Label/Wert + Pfeil — klickbar (z.B. zum Kopieren) */
 @Composable
-private fun ContactItem(icon: ImageVector, label: String, value: String, onClick: () -> Unit = {}) {
+private fun ContactInfoItem(
+    icon: ImageVector, label: String, value: String, onClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -455,21 +552,20 @@ private fun ContactItem(icon: ImageVector, label: String, value: String, onClick
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(icon, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodyMedium)
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForward, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
     }
 }
 
+/** Einfache Profil-Menüzeile: Icon + Label + Pfeil */
 @Composable
-private fun ProfileItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun ProfItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -478,23 +574,21 @@ private fun ProfileItem(icon: ImageVector, label: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
-        Text(label, modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         Icon(Icons.AutoMirrored.Filled.ArrowForward, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                       modifier = Modifier.size(16.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
     }
 }
 
+/**
+ * Profil-Menüzeile mit optionalem Badge.
+ * badgeCount > 0 → Zahl-Badge; badgeCount == -1 → "Verified"-Chip; sonst kein Badge.
+ */
 @Composable
-private fun ProfileItemWithBadge(
-    icon: ImageVector,
-    label: String,
-    badgeCount: Int = 0,
-    onClick: () -> Unit
+private fun ProfItemBadge(
+    icon: ImageVector, label: String, badgeCount: Int = 0, onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -504,29 +598,23 @@ private fun ProfileItemWithBadge(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
-        Text(label, modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         if (badgeCount > 0) {
-            Badge { Text("$badgeCount") }
+            Badge { Text("$" + badgeCount.toString()) }
             Spacer(Modifier.width(6.dp))
         } else if (badgeCount == -1) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF16A34A).copy(alpha = 0.1f)
-            ) {
+            Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF16A34A).copy(alpha = 0.1f)) {
                 Text("Verified",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    color = Color(0xFF16A34A),
-                    fontSize = 11.sp,
+                    modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    color      = Color(0xFF16A34A),
+                    fontSize   = 11.sp,
                     fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.width(6.dp))
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForward, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp))
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
     }
 }

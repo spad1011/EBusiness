@@ -1,5 +1,8 @@
 package com.example.ebusiness.screens
 
+// Profilbearbeitung in zwei Tabs: Profilinformationen und Passwort ändern.
+// Initialdaten kommen vom ViewModel (displayName, phone, location).
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,11 +28,20 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Profilbearbeitungs-Screen mit Tab-Navigation.
+ * Tab 0: Name, Telefon, Standort, Account-Typ ändern.
+ * Tab 1: Passwort ändern (aktuell nur UI, keine echte Logik).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     onBack: () -> Unit,
-    userType: String = "fan"
+    userType: String = "fan",
+    initialDisplayName: String = "",
+    initialPhone: String = "",
+    initialLocation: String = "",
+    onSaveProfile: (displayName: String, phone: String, location: String) -> Unit = { _, _, _ -> }
 ) {
     val isHost = userType == "host"
 
@@ -43,10 +55,10 @@ fun EditProfileScreen(
     var selectedAccountType by remember {
         mutableStateOf(if (isHost) 2 else 0)
     }
-    var fullName by remember { mutableStateOf(if (isHost) "Event Host Pro" else "Music Fan") }
-    var email by remember { mutableStateOf(if (isHost) "test_host@stagepot.com" else "test_fan@stagepot.com") }
-    var phone by remember { mutableStateOf(if (isHost) "+1 (555) 987-6543" else "+1 (555) 234-5678") }
-    var location by remember { mutableStateOf(if (isHost) "Los Angeles, CA" else "Berlin, Deutschland") }
+    var fullName by remember { mutableStateOf(initialDisplayName) }
+    var email    by remember { mutableStateOf("") }  // email intentionally left blank (privacy)
+    var phone    by remember { mutableStateOf(initialPhone) }
+    var location by remember { mutableStateOf(initialLocation) }
 
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
@@ -253,7 +265,10 @@ fun EditProfileScreen(
                                 .clickable(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() }
-                                ) { onBack() }
+                                ) {
+                                    onSaveProfile(fullName, phone, location)
+                                    onBack()
+                                }
                                 .padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -346,6 +361,7 @@ fun EditProfileScreen(
     }
 }
 
+/** Einzeiliges Textfeld mit Label und Icon — für Profilfelder (Name, Telefon, etc.) */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditField(
@@ -380,6 +396,7 @@ private fun EditField(
     }
 }
 
+/** Passwortfeld mit Sichtbarkeits-Toggle (Auge-Icon) */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PasswordField(

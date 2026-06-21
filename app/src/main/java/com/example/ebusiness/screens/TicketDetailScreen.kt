@@ -1,5 +1,7 @@
 package com.example.ebusiness.screens
 
+// Detailansicht eines einzelnen Tickets: Event-Info, simulierter QR-Code und Download-Dialog.
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -7,9 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -20,6 +21,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.ebusiness.data.Ticket
 
+/**
+ * Ticket-Detailscreen — sucht das Ticket per ID aus der übergebenen Liste.
+ * Zeigt Event-Titel, Datum, Ort, Sitzplatz und den simulierten QR-Code.
+ * Der Download-Dialog ist UI-only (kein echtes PDF-Export).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TicketDetailScreen(
@@ -28,6 +34,22 @@ fun TicketDetailScreen(
     onBack: () -> Unit
 ) {
     val ticket = tickets.find { it.id == ticketId } ?: return
+    var showDownloadDialog by remember { mutableStateOf(false) }
+
+    if (showDownloadDialog) {
+        AlertDialog(
+            onDismissRequest = { showDownloadDialog = false },
+            icon  = { Icon(Icons.Default.Download, null) },
+            title = { Text("Download Ticket") },
+            text  = { Text("Download this ticket as a PDF to your device?") },
+            confirmButton = {
+                Button(onClick = { showDownloadDialog = false }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -35,14 +57,11 @@ fun TicketDetailScreen(
             title = { Text("Ticket Details") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
             actions = {
-                IconButton(onClick = { /* Share-Logik */ }) {
-                    Icon(Icons.Default.Share, contentDescription = "Teilen")
-                }
-                IconButton(onClick = { /* Download-Logik */ }) {
+                IconButton(onClick = { showDownloadDialog = true }) {
                     Icon(Icons.Default.Download, contentDescription = "Download")
                 }
             }
@@ -82,15 +101,15 @@ fun TicketDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        TicketInfoColumn("DATUM", ticket.eventDate)
-                        TicketInfoColumn("ORT", ticket.eventLocation)
-                        TicketInfoColumn("PLATZ", ticket.seat.take(12))
+                        TicketInfoColumn("DATE", ticket.eventDate)
+                        TicketInfoColumn("LOCATION", ticket.eventLocation)
+                        TicketInfoColumn("SEAT", ticket.seat.take(12))
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
                     Text(
-                        "Zeige diesen Code beim Einlass",
+                        "Show this code at the entrance",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -119,7 +138,7 @@ fun TicketDetailScreen(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    "✓ Ticket gültig",
+                    "✓ Ticket Valid",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -130,6 +149,7 @@ fun TicketDetailScreen(
     }
 }
 
+/** Einzelne Info-Spalte in der Ticket-Karte: Label oben, Wert darunter */
 @Composable
 private fun TicketInfoColumn(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -149,9 +169,8 @@ private fun TicketInfoColumn(label: String, value: String) {
 }
 
 /**
- * Simulierter QR-Code basierend auf dem qrData-String.
- * Echte QR-Generierung würde zxing-android-embedded brauchen —
- * das hier sieht aus wie ein QR-Code und reicht für die Demo.
+ * Simulated QR code based on the qrData string.
+ * Real QR generation would require zxing-android-embedded — this serves as a demo placeholder.
  */
 @Composable
 fun SimulatedQrCode(qrData: String) {
@@ -159,6 +178,7 @@ fun SimulatedQrCode(qrData: String) {
     val seed = qrData.hashCode()
     val random = java.util.Random(seed.toLong())
 
+    // Ecken bekommen echtes QR-Finder-Muster (7×7); Rest ist zufällig per Hash
     val matrix = Array(cells) { row ->
         BooleanArray(cells) { col ->
             when {
@@ -185,12 +205,14 @@ fun SimulatedQrCode(qrData: String) {
     }
 }
 
+/** Prüft ob eine Zelle in einem der drei Finder-Pattern-Blöcke liegt (oben-links, oben-rechts, unten-links) */
 private fun isCornerBlock(row: Int, col: Int, size: Int): Boolean {
     return (row < 7 && col < 7) ||
             (row < 7 && col >= size - 7) ||
             (row >= size - 7 && col < 7)
 }
 
+/** Erzeugt das typische QR-Finder-Muster: äußerer Rahmen + inneres 3×3-Quadrat */
 private fun isInCornerPattern(row: Int, col: Int): Boolean {
     if (row == 0 || row == 6 || col == 0 || col == 6) return true
     if (row in 2..4 && col in 2..4) return true
