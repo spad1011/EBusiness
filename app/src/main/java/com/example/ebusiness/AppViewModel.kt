@@ -301,25 +301,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // ── Lotterie ──────────────────────────────────────────────────────────────
 
     /**
-     * Trägt den User in die Lotterie für ein Event ein.
-     * Wenn er schon teilgenommen hat, passiert nichts (doppelte Teilnahme verhindern).
+     * Trägt den User in die Lotterie für ein Event ein und zieht den Betrag von den Credits ab.
+     * Wenn er schon teilgenommen hat oder nicht genug Credits hat, passiert nichts.
      */
     fun enterLottery(eventId: Int, ticketCount: Int = 1) {
         viewModelScope.launch {
-            // Prüfen ob der User schon einen Eintrag für dieses Event hat
+            // Doppelte Teilnahme verhindern
             val existing = lotteryDao.getEntry(eventId, _currentUserId.value)
             if (existing != null) return@launch
+
+            val cost = ticketCount * 1.09
+
+            // Credits abziehen — gibt 0 zurück wenn nicht genug Guthaben vorhanden
+            val deducted = userDao.deductCredits(_currentUserId.value, cost)
+            if (deducted == 0) return@launch  // nicht genug Credits, Eintrag nicht anlegen
 
             lotteryDao.insert(
                 LotteryEntryEntity(
                     eventId     = eventId,
                     userId      = _currentUserId.value,
                     ticketsPaid = ticketCount,
-                    amountPaid  = ticketCount * 1.09
+                    amountPaid  = cost
                 )
             )
 
-            // Liste aktualisieren damit der Button sofort grau wird
+            // Credits-Anzeige und Lotterie-Liste sofort aktualisieren
+            loadUser()
             loadLotteryEntries()
         }
     }
