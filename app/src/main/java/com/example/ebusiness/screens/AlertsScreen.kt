@@ -252,6 +252,7 @@ fun AlertsScreen(
                     items(newAlerts, key = { it.id }) { n ->
                         NotificationCard(
                             notification = n,
+                            currency     = currency,
                             onDismiss    = { onDismiss(n.id) },
                             onAction     = {
                                 when (n.type) {
@@ -289,10 +290,13 @@ fun AlertsScreen(
 /**
  * Eine einzelne Notification-Karte.
  * Ungelesene Karten haben einen farbigen linken Balken und einen Action-Button.
+ * Der Cashback-Button-Text wird dynamisch aus actionAmount + currency gebaut,
+ * damit er immer die richtige Währung zeigt.
  */
 @Composable
 private fun NotificationCard(
     notification: NotificationEntity,
+    currency: String = "EUR",
     onDismiss: () -> Unit,
     onAction: () -> Unit
 ) {
@@ -382,7 +386,12 @@ private fun NotificationCard(
                                     tint = Color.White, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(6.dp))
                             }
-                            Text(notification.actionLabel,
+                            // Für lottery_lose: Betrag in gewählter Währung anzeigen
+                            val buttonLabel = if (notification.type == "lottery_lose" && notification.actionAmount != null)
+                                "Claim ${formatPrice(notification.actionAmount, currency)} Cashback"
+                            else
+                                notification.actionLabel ?: ""
+                            Text(buttonLabel,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White)
