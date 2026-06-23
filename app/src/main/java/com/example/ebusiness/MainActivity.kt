@@ -336,8 +336,8 @@ fun StagePotApp() {
                         eventId             = screen.eventId,
                         event               = selectedEvent,
                         onBack              = { currentScreen = Screen.EventDetail(screen.eventId) },
-                        onSuccess           = {
-                            vm.enterLottery(screen.eventId)
+                        onSuccess           = { count ->
+                            vm.enterLottery(screen.eventId, count)
                             currentScreen = Screen.Alerts
                         },
                         credits             = currentUser?.credits ?: 0.0,

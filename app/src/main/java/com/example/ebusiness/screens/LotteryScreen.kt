@@ -38,7 +38,7 @@ fun LotteryScreen(
     eventId: Int,
     event: Event?,
     onBack: () -> Unit,
-    onSuccess: () -> Unit,
+    onSuccess: (Int) -> Unit,
     credits: Double = 0.0,
     currency: String = "EUR",
     totalLotteryEntries: Int = 0
@@ -325,7 +325,7 @@ fun LotteryScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = { showConfirmDialog = false; onSuccess() }) {
+                Button(onClick = { showConfirmDialog = false; onSuccess(entries) }) {
                     Text("Confirm!")
                 }
             },
